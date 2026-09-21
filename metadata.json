@@ -1,0 +1,6 @@
+{
+  "name": "UNPLUG LABS® OFFLINE OS",
+  "description": "A calmer Android launcher designed to help you use your phone intentionally.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

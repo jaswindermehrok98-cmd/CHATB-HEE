@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">UNPLUG LABS® OFFLINE OS</string>
+    <string name="short_app_name">OFFLINE OS</string>
+    <string name="device_admin_description">Enables UNPLUG LABS OFFLINE OS to lock the screen when device timers expire.</string>
+    <string name="accessibility_service_description">Monitors app launches strictly to enforce user-configured daily limits and focus sessions.</string>
+</resources>
+
