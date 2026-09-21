@@ -1,0 +1,64 @@
+name: Build OFFLINE OS APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "launcher-source.zip"
+      - ".github/workflows/build-offline-os.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Unpack native launcher
+        run: |
+          rm -rf launcher-build
+          mkdir launcher-build
+          unzip -q launcher-source.zip -d launcher-build
+          test -f launcher-build/settings.gradle.kts
+          test -f launcher-build/app/build.gradle.kts
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Build APK
+        working-directory: launcher-build
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: Prepare APK
+        run: |
+          cp launcher-build/app/build/outputs/apk/debug/app-debug.apk OFFLINE-OS-preview.apk
+          sha256sum OFFLINE-OS-preview.apk > OFFLINE-OS-preview.apk.sha256
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete v1.0.0-preview --yes 2>/dev/null || true
+          gh release create v1.0.0-preview             OFFLINE-OS-preview.apk             OFFLINE-OS-preview.apk.sha256             --title "OFFLINE OS 1.0.0 Preview"             --notes "UNPLUG LABS® OFFLINE OS native Android launcher preview. Debug-signed for testing; production signing will use the publisher release keystore."             --latest
