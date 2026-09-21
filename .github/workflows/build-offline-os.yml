@@ -1,10 +1,15 @@
-name: Build OFFLINE OS APK
+name: Build and publish OFFLINE OS
 
 on:
   push:
     branches: [main]
     paths:
-      - "launcher-source.zip"
+      - "app/**"
+      - "build.gradle.kts"
+      - "gradle/**"
+      - "gradle.properties"
+      - "settings.gradle.kts"
+      - "metadata.json"
       - ".github/workflows/build-offline-os.yml"
   workflow_dispatch:
 
@@ -17,7 +22,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
+      - name: Checkout OFFLINE OS
         uses: actions/checkout@v6
 
       - name: Set up JDK 17
@@ -34,31 +39,59 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Unpack native launcher
-        run: |
-          rm -rf launcher-build
-          mkdir launcher-build
-          unzip -q launcher-source.zip -d launcher-build
-          test -f launcher-build/settings.gradle.kts
-          test -f launcher-build/app/build.gradle.kts
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.3.1"
 
-      - name: Build APK
-        working-directory: launcher-build
-        run: gradle :app:assembleDebug --no-daemon
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
 
-      - name: Prepare APK
+      - name: Prepare download files
         run: |
-          cp launcher-build/app/build/outputs/apk/debug/app-debug.apk OFFLINE-OS-preview.apk
-          sha256sum OFFLINE-OS-preview.apk > OFFLINE-OS-preview.apk.sha256
+          cp app/build/outputs/apk/debug/app-debug.apk OFFLINE-OS-1.0.0-preview.apk
+          sha256sum OFFLINE-OS-1.0.0-preview.apk > OFFLINE-OS-1.0.0-preview.apk.sha256
 
-      - name: Publish GitHub Release
+      - name: Create easy-to-understand GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete v1.0.0-preview --yes 2>/dev/null || true
-          gh release create v1.0.0-preview             OFFLINE-OS-preview.apk             OFFLINE-OS-preview.apk.sha256             --title "OFFLINE OS 1.0.0 Preview"             --notes "UNPLUG LABS® OFFLINE OS native Android launcher preview. Debug-signed for testing; production signing will use the publisher release keystore."             --latest
+          gh release create v1.0.0-preview             OFFLINE-OS-1.0.0-preview.apk             OFFLINE-OS-1.0.0-preview.apk.sha256             --title "OFFLINE OS 1.0.0 — Android Preview"             --notes-file -             --latest <<'RELEASE_NOTES'
+# UNPLUG LABS® OFFLINE OS
+
+## DOWNLOAD
+
+Android phone: download **OFFLINE-OS-1.0.0-preview.apk** from the **Assets** section at the bottom of this page.
+
+## INSTALL
+
+1. Open the downloaded APK on your Android phone.
+2. Android may ask you to allow installation from this source.
+3. Allow it, install OFFLINE OS, then open it.
+4. On first launch, OFFLINE OS will guide you through setup and required permissions.
+5. Follow the Android prompt if you want OFFLINE OS to become your Home app.
+
+## WHAT THIS IS
+
+OFFLINE OS is a native Android launcher from UNPLUG LABS®. It is designed around intentional phone use, with Home, installed-app discovery, notification triage, supported quick replies, limits, focus, device timing, and UNPLUG experiences.
+
+## PREVIEW STATUS
+
+This is a **debug-signed preview build for testing**, not the final production-signed release.
+
+## VERIFY
+
+The SHA-256 file beside the APK contains the checksum for the download.
+
+OFFLINE OS website:
+https://unpluglabs-offlineos.vercel.app/
+RELEASE_NOTES
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: OFFLINE-OS-1.0.0-preview
+          path: |
+            OFFLINE-OS-1.0.0-preview.apk
+            OFFLINE-OS-1.0.0-preview.apk.sha256
